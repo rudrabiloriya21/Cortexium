@@ -47,7 +47,7 @@ const MODE_CONFIG = {
     color: 'text-blue-400',
     bgColor: 'bg-blue-500/10',
     activeBg: 'bg-blue-600',
-    instruction: `You are Learnix, an AI Study Assistant in "Explain Mode". Your goal is to help the user deeply understand complex topics from first principles.
+    instruction: `You are Cortexium, an AI Study Assistant in "Explain Mode". Your goal is to help the user deeply understand complex topics from first principles.
 Guidelines:
 1. Use the Feynman Technique: Explain concepts as if the user is a beginner.
 2. Use relatable, real-world analogies to make abstract concepts concrete.
@@ -64,7 +64,7 @@ Guidelines:
     color: 'text-emerald-400',
     bgColor: 'bg-emerald-500/10',
     activeBg: 'bg-emerald-600',
-    instruction: `You are Learnix, an AI Study Assistant in "Summary Mode". Your goal is to extract the absolute core essence of a topic or text for rapid revision.
+    instruction: `You are Cortexium, an AI Study Assistant in "Summary Mode". Your goal is to extract the absolute core essence of a topic or text for rapid revision.
 Guidelines:
 1. Be extremely concise. Cut out all fluff, filler, and unnecessary examples.
 2. Structure the output as "Flashcard Notes" or "Cheat Sheet" format.
@@ -82,7 +82,7 @@ Guidelines:
     color: 'text-purple-400',
     bgColor: 'bg-purple-500/10',
     activeBg: 'bg-purple-600',
-    instruction: `You are Learnix, an AI Study Assistant in "Quiz Mode". Your goal is to actively test the user's knowledge through an interactive quiz session.
+    instruction: `You are Cortexium, an AI Study Assistant in "Quiz Mode". Your goal is to actively test the user's knowledge through an interactive quiz session.
 Guidelines:
 1. When the user provides a topic, ask exactly ONE question to start. Do NOT ask multiple questions at once.
 2. Wait for the user to answer.
@@ -95,7 +95,7 @@ Guidelines:
 } as const;
 
 // ---- ASSETS / BRANDING ----
-function LearnixLogo({ className = "w-6 h-6", glow = true }: { className?: string, glow?: boolean }) {
+function CortexiumLogo({ className = "w-6 h-6", glow = true }: { className?: string, glow?: boolean }) {
   return (
     <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -126,7 +126,7 @@ function LearnixLogo({ className = "w-6 h-6", glow = true }: { className?: strin
 }
 
 // ---- CHAT APP COMPONENT ----
-function LearnixApp({ onExit, initialPrompt, initialMode, user }: { onExit: () => void, initialPrompt?: string, initialMode?: Mode, user: FirebaseUser | null }) {
+function CortexiumApp({ onExit, initialPrompt, initialMode, user }: { onExit: () => void, initialPrompt?: string, initialMode?: Mode, user: FirebaseUser | null }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [mode, setMode] = useState<Mode>(initialMode || 'explain');
@@ -256,8 +256,8 @@ function LearnixApp({ onExit, initialPrompt, initialMode, user }: { onExit: () =
             <ArrowRight className="w-5 h-5 rotate-180" />
           </button>
           <div className="flex items-center gap-2 text-white">
-            <LearnixLogo className="w-8 h-8" />
-            <h1 className="text-xl font-bold tracking-tight">Learnix</h1>
+            <CortexiumLogo className="w-8 h-8" />
+            <h1 className="text-xl font-bold tracking-tight">Cortexium</h1>
           </div>
         </div>
         
@@ -324,11 +324,11 @@ function LearnixApp({ onExit, initialPrompt, initialMode, user }: { onExit: () =
                 transition={{ duration: 0.5 }}
                 className="w-20 h-20 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl shadow-sm border border-white/10 flex items-center justify-center mb-4"
               >
-                <LearnixLogo className="w-14 h-14" />
+                <CortexiumLogo className="w-14 h-14" />
               </motion.div>
               <h2 className="text-3xl font-bold tracking-tight text-white drop-shadow-sm">What do you want to learn today?</h2>
               <p className="text-lg text-zinc-400 leading-relaxed">
-                Learnix is your personal AI tutor. Choose a mode below to get detailed explanations, quick summaries, or test your knowledge.
+                Cortexium is your personal AI tutor. Choose a mode below to get detailed explanations, quick summaries, or test your knowledge.
               </p>
               
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full mt-8">
@@ -373,7 +373,7 @@ function LearnixApp({ onExit, initialPrompt, initialMode, user }: { onExit: () =
                     )}>
                       {msg.role === 'user' 
                         ? <User className="w-5 h-5 text-zinc-300" /> 
-                        : <LearnixLogo className="w-6 h-6" glow={false} />
+                        : <CortexiumLogo className="w-6 h-6" glow={false} />
                       }
                     </div>
 
@@ -383,7 +383,7 @@ function LearnixApp({ onExit, initialPrompt, initialMode, user }: { onExit: () =
                     )}>
                       {msg.role === 'model' && (
                         <div className="px-1 mb-1.5 flex items-center gap-2">
-                          <span className="text-sm font-semibold text-zinc-400">Learnix</span>
+                          <span className="text-sm font-semibold text-zinc-400">Cortexium</span>
                         </div>
                       )}
                       
@@ -420,11 +420,11 @@ function LearnixApp({ onExit, initialPrompt, initialMode, user }: { onExit: () =
                   className="flex w-full gap-4 sm:gap-6"
                 >
                   <div className="shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center mt-1 shadow-sm border bg-[#18181B] border-blue-500/30">
-                    <LearnixLogo className="w-6 h-6" glow={false} />
+                    <CortexiumLogo className="w-6 h-6" glow={false} />
                   </div>
                   <div className="flex flex-col items-start min-w-0">
                     <div className="px-1 mb-1.5">
-                      <span className="text-sm font-semibold text-zinc-400">Learnix</span>
+                      <span className="text-sm font-semibold text-zinc-400">Cortexium</span>
                     </div>
                     <div className="px-5 py-4 rounded-2xl bg-[#18181B] border border-white/10 shadow-md text-zinc-200 rounded-tl-none flex items-center gap-2 h-[56px]">
                       <span className="w-2 h-2 rounded-full bg-blue-500 animate-[bounce_1.4s_infinite_0s] opacity-70"></span>
@@ -456,7 +456,7 @@ function LearnixApp({ onExit, initialPrompt, initialMode, user }: { onExit: () =
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={`Ask Learnix anything (${MODE_CONFIG[mode].name} Mode)...`}
+              placeholder={`Ask Cortexium anything (${MODE_CONFIG[mode].name} Mode)...`}
               className="flex-1 max-h-48 min-h-[56px] py-4 px-4 sm:px-0 bg-transparent text-white placeholder-zinc-500 resize-none outline-none leading-relaxed"
               rows={1}
             />
@@ -471,7 +471,7 @@ function LearnixApp({ onExit, initialPrompt, initialMode, user }: { onExit: () =
             </div>
           </form>
           <div className="text-center mt-3">
-            <span className="text-xs text-zinc-600 font-medium">Learnix can make mistakes. Verify important information.</span>
+            <span className="text-xs text-zinc-600 font-medium">Cortexium can make mistakes. Verify important information.</span>
           </div>
         </div>
       </footer>
@@ -536,8 +536,8 @@ function LandingPage({ onStart, onStartChat, user }: { onStart: () => void, onSt
       <nav className="border-b border-white/5 bg-[#0F0F11]/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <LearnixLogo className="w-8 h-8" />
-            <span className="text-xl font-bold tracking-tight text-white">Learnix</span>
+            <CortexiumLogo className="w-8 h-8" />
+            <span className="text-xl font-bold tracking-tight text-white">Cortexium</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-400">
             <a href="#features" className="hover:text-white transition-colors">Features</a>
@@ -588,7 +588,7 @@ function LandingPage({ onStart, onStartChat, user }: { onStart: () => void, onSt
             </h1>
             
             <p className="text-xl text-zinc-400 leading-relaxed">
-              Your personal AI tutor that explains, summarizes, and quizzes you instantly. Stop wasting time searching. Just ask Learnix.
+              Your personal AI tutor that explains, summarizes, and quizzes you instantly. Stop wasting time searching. Just ask Cortexium.
             </p>
             
             <div className="flex flex-col sm:flex-row flex-wrap items-center gap-4 w-full">
@@ -643,7 +643,7 @@ function LandingPage({ onStart, onStartChat, user }: { onStart: () => void, onSt
                 <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50" />
               </div>
               <div className="mx-auto bg-white/5 rounded-md px-24 py-1.5 text-xs text-zinc-500 flex items-center gap-2">
-                <LearnixLogo className="w-3 h-3" glow={false} /> learnix.ai
+                <CortexiumLogo className="w-3 h-3" glow={false} /> cortexium.ai
               </div>
             </div>
             {/* Mockup Content */}
@@ -653,7 +653,7 @@ function LandingPage({ onStart, onStartChat, user }: { onStart: () => void, onSt
                  <div className="bg-blue-600 text-white p-4 rounded-2xl rounded-tl-none max-w-[80%] text-sm">Explain how Neural Networks work, but like I'm 5 years old.</div>
                </div>
                <div className="flex items-start gap-4">
-                 <div className="w-8 h-8 rounded-full bg-[#18181B] border border-blue-500/30 flex items-center justify-center shadow-lg shadow-blue-500/20"><LearnixLogo className="w-5 h-5" glow={false} /></div>
+                 <div className="w-8 h-8 rounded-full bg-[#18181B] border border-blue-500/30 flex items-center justify-center shadow-lg shadow-blue-500/20"><CortexiumLogo className="w-5 h-5" glow={false} /></div>
                  <div className="bg-[#18181B] border border-white/5 text-zinc-300 p-4 rounded-2xl rounded-tl-none max-w-[90%] text-sm leading-relaxed space-y-3">
                    <p>Imagine your brain is a giant team of tiny workers trying to solve a puzzle. 🧩</p>
                    <ul className="list-disc pl-4 space-y-1 text-zinc-400">
@@ -684,7 +684,7 @@ function LandingPage({ onStart, onStartChat, user }: { onStart: () => void, onSt
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center max-w-3xl mx-auto mb-20">
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-white mb-6">Everything you need to <span className="text-blue-400">ace your study session</span></h2>
-            <p className="text-lg text-zinc-400">Learnix adapts to how you want to learn. Just pick a mode.</p>
+            <p className="text-lg text-zinc-400">Cortexium adapts to how you want to learn. Just pick a mode.</p>
           </div>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -756,7 +756,7 @@ function LandingPage({ onStart, onStartChat, user }: { onStart: () => void, onSt
             <div className="relative">
               <div className="absolute inset-0 bg-blue-500/10 blur-3xl rounded-full" />
               <div className="bg-[#121214] border border-white/10 p-8 rounded-3xl relative z-10 space-y-6">
-                <h3 className="text-2xl font-bold text-white">Why Learnix?</h3>
+                <h3 className="text-2xl font-bold text-white">Why Cortexium?</h3>
                 <ul className="space-y-4">
                   <li className="flex items-center gap-3 text-zinc-300"><CheckCircle2 className="w-5 h-5 text-blue-400 flex-shrink-0" /> <span className="line-through text-zinc-600 mr-2">Hours of searching</span> Instant answers</li>
                   <li className="flex items-center gap-3 text-zinc-300"><CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" /> <span className="line-through text-zinc-600 mr-2">Dense textbooks</span> Bite-sized concepts</li>
@@ -777,7 +777,7 @@ function LandingPage({ onStart, onStartChat, user }: { onStart: () => void, onSt
             onClick={onStart}
             className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-10 py-5 rounded-2xl font-bold text-lg mx-auto transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-blue-600/25"
           >
-            👉 Try Learnix Now
+            👉 Try Cortexium Now
           </button>
         </div>
       </section>
@@ -786,8 +786,8 @@ function LandingPage({ onStart, onStartChat, user }: { onStart: () => void, onSt
       <footer className="border-t border-white/5 py-12 bg-[#0A0A0B]">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2">
-            <LearnixLogo className="w-6 h-6" />
-            <span className="text-lg font-bold text-white">Learnix</span>
+            <CortexiumLogo className="w-6 h-6" />
+            <span className="text-lg font-bold text-white">Cortexium</span>
             <span className="text-zinc-600 ml-2 lg:inline hidden">| AI-powered learning assistant</span>
           </div>
           <div className="flex gap-6 text-sm text-zinc-500 font-medium">
@@ -827,7 +827,7 @@ export default function App() {
 
   if (currentPage === 'chat') {
     return (
-      <LearnixApp 
+      <CortexiumApp 
         onExit={() => setCurrentPage(selectedClass ? 'dashboard' : 'classes')} 
         initialPrompt={initialPrompt}
         initialMode={initialMode}
