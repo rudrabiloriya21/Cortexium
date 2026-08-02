@@ -1,8 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import Groq from 'groq-sdk';
 import { Send, User, Lightbulb, FileText, CheckSquare, Sparkles, MessageSquare, BrainCircuit, ArrowRight, CheckCircle2, GraduationCap, ChevronRight, BookOpen, Clock, Activity, Target } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import mermaid from 'mermaid';
+import 'katex/dist/katex.min.css';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -30,6 +34,35 @@ function getAI() {
 
 // TYPES
 type Mode = 'explain' | 'summary' | 'quiz';
+
+// SETUP MERMAID
+mermaid.initialize({ startOnLoad: false, theme: 'dark', suppressErrorRendering: true });
+
+const MermaidChart = ({ code }: { code: string }) => {
+  const chartRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (chartRef.current) {
+      const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
+      // Sanitize common LLM mermaid syntax mistakes
+      let sanitizedCode = code.replace(/-->\|([^|]+)\|>?/g, '-- $1 -->');
+      // Sometimes it outputs -- text -- >
+      sanitizedCode = sanitizedCode.replace(/--([^-]+)--\s*>/g, '-- $1 -->');
+      
+      mermaid.render(id, sanitizedCode).then(({ svg }) => {
+        if (chartRef.current) {
+           chartRef.current.innerHTML = svg;
+        }
+      }).catch(e => {
+        if (chartRef.current) {
+           chartRef.current.innerHTML = `<pre class="text-red-400 text-sm overflow-auto max-w-full">Mermaid Syntax Error: ${e.message || 'Invalid syntax'}</pre>`;
+        }
+      });
+    }
+  }, [code]);
+
+  return <div ref={chartRef} className="mermaid-chart flex justify-center my-4 overflow-x-auto w-full" />;
+};
 
 type Message = {
   id: string;
@@ -358,7 +391,7 @@ function CortexiumApp({ onExit, initialPrompt, initialMode, user }: { onExit: ()
           ) : (
             <div className="space-y-6 pb-20">
               <AnimatePresence initial={false}>
-                {messages.map((msg) => (
+                {useMemo(() => messages.map((msg) => (
                   <motion.div
                     key={msg.id}
                     initial={{ opacity: 0, y: 10 }}
@@ -410,7 +443,7 @@ function CortexiumApp({ onExit, initialPrompt, initialMode, user }: { onExit: ()
                       </div>
                     </div>
                   </motion.div>
-                ))}
+                )), [messages])}
               </AnimatePresence>
 
               {isTyping && messages[messages.length - 1]?.role !== 'model' && (
@@ -801,8 +834,219 @@ function LandingPage({ onStart, onStartChat, user }: { onStart: () => void, onSt
   );
 }
 
+// ---- INTERACTIVE CLASSROOM COMPONENT ----
+function InteractiveClassroom({ onExit, user }: { onExit: () => void; user: FirebaseUser | null }) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [boardContent, setBoardContent] = useState<string>('# Welcome to the Interactive Classroom!\n\nI am Cortexium, your AI tutor. Ask me anything, and I will explain it here on the board.');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping]);
+
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!input.trim()) return;
+
+    const userMessage = input.trim();
+    setInput('');
+    setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', text: userMessage }]);
+    setIsTyping(true);
+
+    try {
+      const groq = getAI();
+      const prompt = `You are Cortexium, an AI Study Assistant teaching in an Interactive Classroom.
+      
+The user says: "${userMessage}"
+
+You need to respond with two parts separated by a special delimiter "|||BOARD_CONTENT|||".
+1. The first part is your conversational reply that will show up in the chat window. Keep it short and encouraging.
+2. The second part is the detailed Markdown content that will be displayed on the main whiteboard.
+CRITICAL: Instead of just formatting text, act like a teacher DRAWING on a board. You MUST use Mermaid.js diagrams to visually draw concepts (flowcharts, mindmaps, architecture diagrams, state diagrams). Keep text minimal and focus heavily on visual drawings via \`\`\`mermaid code blocks. Also use KaTeX for math equations.
+WARNING: Ensure your Mermaid syntax is strictly correct. 
+- ALWAYS use \`-- text -->\` for link text (e.g. \`A -- absorbs --> B\`).
+- NEVER use the \`-->|text|\` syntax. It is forbidden.
+
+Example format:
+Here is a visual explanation of photosynthesis!
+|||BOARD_CONTENT|||
+# Photosynthesis
+Here is how it works:
+\`\`\`mermaid
+graph TD;
+    Light-->Chloroplasts;
+    Water-->Chloroplasts;
+    CO2-->Chloroplasts;
+    Chloroplasts-->Oxygen;
+    Chloroplasts-->Glucose;
+\`\`\`
+`;
+
+      const completion = await groq.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        model: "llama-3.3-70b-versatile",
+        temperature: 0.7,
+      });
+
+      const responseText = completion.choices[0]?.message?.content || "I'm sorry, I couldn't process that.";
+      const parts = responseText.split('|||BOARD_CONTENT|||');
+      
+      const chatReply = parts[0]?.trim() || "Here's what I came up with.";
+      const boardNewContent = parts[1]?.trim();
+
+      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', text: chatReply }]);
+      if (boardNewContent) {
+        setBoardContent(boardNewContent);
+      }
+    } catch (error) {
+      console.error(error);
+      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', text: "Sorry, I encountered an error. Please try again.", isError: true }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  return (
+    <div className="h-screen w-full bg-[#0A0A0B] flex flex-col font-sans overflow-hidden text-zinc-100">
+      {/* Header */}
+      <header className="h-14 border-b border-white/5 bg-[#0F0F11] flex items-center justify-between px-4 shrink-0">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={onExit}
+            className="p-1.5 hover:bg-white/5 rounded-lg text-zinc-400 transition-colors"
+          >
+            <ArrowRight className="w-5 h-5 rotate-180" />
+          </button>
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-blue-400" />
+            <h1 className="font-semibold text-white">Interactive Classroom</h1>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-medium text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">Live Session</span>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
+        
+        {/* Chat Sidebar (Left) */}
+        <div className="w-full md:w-80 lg:w-96 border-b md:border-b-0 md:border-r border-white/5 bg-[#0F0F11] flex flex-col h-[50vh] md:h-auto shrink-0">
+           {/* Chat Messages */}
+           <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+             <div className="text-center p-4">
+                <CortexiumLogo className="w-10 h-10 mx-auto mb-3 opacity-80" glow={false} />
+                <h3 className="text-white font-medium mb-1">Cortexium AI Tutor</h3>
+                <p className="text-sm text-zinc-500">Ask a question to start learning.</p>
+             </div>
+             
+             {useMemo(() => messages.map((msg) => (
+                <div key={msg.id} className={cn("flex gap-3 max-w-[90%]", msg.role === 'user' ? "ml-auto flex-row-reverse" : "")}>
+                  <div className={cn(
+                    "w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-sm",
+                    msg.role === 'user' ? "bg-zinc-800 text-white" : "bg-blue-600 text-white"
+                  )}>
+                    {msg.role === 'user' ? <User className="w-4 h-4" /> : <BrainCircuit className="w-4 h-4" />}
+                  </div>
+                  <div className={cn(
+                    "p-3 rounded-2xl text-sm leading-relaxed",
+                    msg.role === 'user' 
+                      ? "bg-zinc-800 text-white rounded-tr-sm" 
+                      : msg.isError
+                        ? "bg-red-500/10 border border-red-500/20 text-red-200 rounded-tl-sm"
+                        : "bg-[#1A1A1E] border border-white/5 text-zinc-200 rounded-tl-sm"
+                  )}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
+                  </div>
+                </div>
+              )), [messages])}
+              
+              {isTyping && (
+                <div className="flex gap-3 max-w-[90%]">
+                   <div className="w-8 h-8 shrink-0 rounded-full bg-blue-600 flex items-center justify-center">
+                    <BrainCircuit className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="p-4 rounded-2xl rounded-tl-sm bg-[#1A1A1E] border border-white/5 flex gap-1.5 items-center">
+                    <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0 }} className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                    <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                    <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }} className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+           </div>
+
+           {/* Chat Input */}
+           <div className="p-4 bg-[#0F0F11] border-t border-white/5">
+             <form onSubmit={handleSendMessage} className="relative flex items-center">
+               <input
+                 type="text"
+                 value={input}
+                 onChange={(e) => setInput(e.target.value)}
+                 placeholder="Ask your tutor..."
+                 className="w-full bg-[#1A1A1E] border border-white/10 rounded-xl pl-4 pr-12 py-3.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all"
+                 disabled={isTyping}
+               />
+               <button
+                 type="submit"
+                 disabled={!input.trim() || isTyping}
+                 className="absolute right-2 p-2 bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-800 disabled:text-zinc-500 text-white rounded-lg transition-colors"
+               >
+                 <Send className="w-4 h-4" />
+               </button>
+             </form>
+           </div>
+        </div>
+
+        {/* Whiteboard / Teaching Area (Right) */}
+        <div className="flex-1 overflow-y-auto bg-[#0A0A0B] p-4 md:p-8 custom-scrollbar">
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-[#121214] border border-white/10 rounded-2xl p-6 md:p-10 min-h-[60vh] shadow-xl relative">
+               <div className="absolute top-4 right-4 flex gap-2">
+                 <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
+                 <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                 <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
+               </div>
+               <div className="prose prose-invert prose-blue max-w-none prose-headings:font-bold prose-h1:text-3xl mt-4">
+                 {useMemo(() => (
+                   <ReactMarkdown 
+                     remarkPlugins={[remarkGfm, remarkMath]}
+                     rehypePlugins={[rehypeKatex]}
+                     components={{
+                       code({ node, inline, className, children, ...props }: any) {
+                         const match = /language-(\w+)/.exec(className || '')
+                         if (!inline && match && match[1] === 'mermaid') {
+                           return <MermaidChart code={String(children).replace(/\n$/, '')} />
+                         }
+                         return (
+                           <code className={className} {...props}>
+                             {children}
+                           </code>
+                         )
+                       }
+                     }}
+                   >
+                     {boardContent}
+                   </ReactMarkdown>
+                 ), [boardContent])}
+               </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
 // ---- APP ROUTER / STATE MANAGER ----
-type PageState = 'landing' | 'classes' | 'dashboard' | 'chat';
+type PageState = 'landing' | 'classes' | 'dashboard' | 'chat' | 'interactive-classroom';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<PageState>('landing');
@@ -836,6 +1080,12 @@ export default function App() {
     );
   }
 
+  if (currentPage === 'interactive-classroom') {
+    return (
+      <InteractiveClassroom onExit={() => setCurrentPage('classes')} user={user} />
+    );
+  }
+
   if (currentPage === 'classes') {
     return (
       <div className="min-h-screen bg-[#0A0A0B] text-zinc-100 font-sans">
@@ -850,6 +1100,29 @@ export default function App() {
         </header>
 
         <main className="max-w-4xl mx-auto px-6 py-12">
+          {/* Interactive Classroom Feature */}
+          <div className="mb-16">
+            <button
+              onClick={() => {
+                setCurrentPage('interactive-classroom');
+              }}
+              className="w-full flex items-center justify-between p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-blue-600/10 to-purple-600/10 border border-blue-500/20 hover:border-blue-500/40 hover:bg-white/[0.02] transition-all text-left group"
+            >
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center border border-white/10 group-hover:scale-105 transition-transform">
+                  <Sparkles className="w-8 h-8 text-blue-400" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">Interactive Classroom Learning</h2>
+                  <p className="text-zinc-400">Join a dynamic, AI-powered interactive environment.</p>
+                </div>
+              </div>
+              <div className="hidden sm:flex items-center gap-2 text-blue-400 font-semibold group-hover:translate-x-2 transition-transform">
+                Enter <ArrowRight className="w-5 h-5" />
+              </div>
+            </button>
+          </div>
+
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-4">What are you studying?</h2>
             <p className="text-zinc-500">Choose your grade to get personalized notes and test series.</p>
