@@ -48,6 +48,8 @@ const MermaidChart = ({ code }: { code: string }) => {
       let sanitizedCode = code.replace(/-->\|([^|]+)\|>?/g, '-- $1 -->');
       // Sometimes it outputs -- text -- >
       sanitizedCode = sanitizedCode.replace(/--([^-]+)--\s*>/g, '-- $1 -->');
+      // Fix spaced arrows
+      sanitizedCode = sanitizedCode.replace(/--\s+>/g, '-->');
       
       mermaid.render(id, sanitizedCode).then(({ svg }) => {
         if (chartRef.current) {
@@ -228,7 +230,7 @@ function CortexiumApp({ onExit, initialPrompt, initialMode, user }: { onExit: ()
 
       const ai = getAI();
       const stream = await ai.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-20b",
         messages: groqMessages,
         stream: true,
       });
@@ -391,7 +393,7 @@ function CortexiumApp({ onExit, initialPrompt, initialMode, user }: { onExit: ()
           ) : (
             <div className="space-y-6 pb-20">
               <AnimatePresence initial={false}>
-                {useMemo(() => messages.map((msg) => (
+                {messages.map((msg) => (
                   <motion.div
                     key={msg.id}
                     initial={{ opacity: 0, y: 10 }}
@@ -443,7 +445,7 @@ function CortexiumApp({ onExit, initialPrompt, initialMode, user }: { onExit: ()
                       </div>
                     </div>
                   </motion.div>
-                )), [messages])}
+                ))}
               </AnimatePresence>
 
               {isTyping && messages[messages.length - 1]?.role !== 'model' && (
@@ -861,17 +863,24 @@ function InteractiveClassroom({ onExit, user }: { onExit: () => void; user: Fire
 
     try {
       const groq = getAI();
-      const prompt = `You are Cortexium, an AI Study Assistant teaching in an Interactive Classroom.
-      
-The user says: "${userMessage}"
+      const systemPrompt = `You are Cortexium, an AI Study Assistant teaching in an Interactive Classroom.
 
 You need to respond with two parts separated by a special delimiter "|||BOARD_CONTENT|||".
 1. The first part is your conversational reply that will show up in the chat window. Keep it short and encouraging.
 2. The second part is the detailed Markdown content that will be displayed on the main whiteboard.
-CRITICAL: Instead of just formatting text, act like a teacher DRAWING on a board. You MUST use Mermaid.js diagrams to visually draw concepts (flowcharts, mindmaps, architecture diagrams, state diagrams). Keep text minimal and focus heavily on visual drawings via \`\`\`mermaid code blocks. Also use KaTeX for math equations.
+CRITICAL: Instead of just formatting text, act like a teacher DRAWING on a board. You MUST use Mermaid.js diagrams to visually draw concepts (flowcharts, mindmaps, architecture diagrams, state diagrams). Keep text minimal and focus heavily on visual drawings. Also use KaTeX for math equations.
 WARNING: Ensure your Mermaid syntax is strictly correct. 
+- ALL Mermaid diagrams MUST be enclosed in standard Markdown code blocks like \`\`\`mermaid ... \`\`\`.
+- ALWAYS use \`-->\` for simple arrows (NO spaces between dashes and bracket).
 - ALWAYS use \`-- text -->\` for link text (e.g. \`A -- absorbs --> B\`).
 - NEVER use the \`-->|text|\` syntax. It is forbidden.
+- ALWAYS use alphanumeric Node IDs without spaces, and attach labels using brackets. e.g. \`NodeA["My Node Text"]\`. 
+- NEVER use quoted strings as Node IDs directly (e.g. DO NOT do \`"My Text" --> B\`).
+- NEVER put KaTeX math formulas (like $$...$$) inside Mermaid diagrams. Mermaid cannot render them.
+- CRITICAL MATH RULE: You MUST wrap ALL mathematical formulas, equations, and variables in KaTeX delimiters. 
+  - For standalone equations, use \`$$\` on their own lines: \`$$ E = mc^2 $$\`
+  - For inline math, use \`$\`: \`$E = mc^2$\`.
+  - NEVER output raw LaTeX equations without \`$\` or \`$$\` wrappers.
 
 Example format:
 Here is a visual explanation of photosynthesis!
@@ -888,9 +897,15 @@ graph TD;
 \`\`\`
 `;
 
+      const groqMessages: any = [
+        { role: "system", content: systemPrompt },
+        ...messages.map(m => ({ role: m.role === 'model' ? 'assistant' : 'user', content: m.text })),
+        { role: "user", content: userMessage }
+      ];
+
       const completion = await groq.chat.completions.create({
-        messages: [{ role: "user", content: prompt }],
-        model: "llama-3.3-70b-versatile",
+        messages: groqMessages,
+        model: "openai/gpt-oss-20b",
         temperature: 0.7,
       });
 
@@ -946,7 +961,7 @@ graph TD;
                 <p className="text-sm text-zinc-500">Ask a question to start learning.</p>
              </div>
              
-             {useMemo(() => messages.map((msg) => (
+             {messages.map((msg) => (
                 <div key={msg.id} className={cn("flex gap-3 max-w-[90%]", msg.role === 'user' ? "ml-auto flex-row-reverse" : "")}>
                   <div className={cn(
                     "w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-sm",
@@ -965,7 +980,7 @@ graph TD;
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
                   </div>
                 </div>
-              )), [messages])}
+              ))}
               
               {isTyping && (
                 <div className="flex gap-3 max-w-[90%]">
@@ -1014,7 +1029,6 @@ graph TD;
                  <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
                </div>
                <div className="prose prose-invert prose-blue max-w-none prose-headings:font-bold prose-h1:text-3xl mt-4">
-                 {useMemo(() => (
                    <ReactMarkdown 
                      remarkPlugins={[remarkGfm, remarkMath]}
                      rehypePlugins={[rehypeKatex]}
@@ -1034,7 +1048,6 @@ graph TD;
                    >
                      {boardContent}
                    </ReactMarkdown>
-                 ), [boardContent])}
                </div>
             </div>
           </div>
